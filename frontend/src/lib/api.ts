@@ -25,6 +25,16 @@ async function post<T>(url: string, body?: FormData | object): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+async function put<T>(url: string, body?: object): Promise<T> {
+  const r = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  return r.json() as Promise<T>;
+}
+
 async function del<T>(url: string): Promise<T> {
   const r = await fetch(url, { method: "DELETE" });
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
@@ -44,4 +54,17 @@ export const api = {
   job: (id: string) => get<Job>(`/api/jobs/${id}`),
   jobs: () => get<Job[]>("/api/jobs"),
   jobOutputUrl: (id: string) => `/api/jobs/${id}/output`,
+  hfTokenStatus: () =>
+    get<{ configured: boolean; sources: string[]; masked: string | null }>(
+      "/api/settings/hf-token",
+    ),
+  setHfToken: (token: string) =>
+    put<{ configured: boolean; sources: string[]; masked: string | null }>(
+      "/api/settings/hf-token",
+      { token },
+    ),
+  clearHfToken: () =>
+    del<{ configured: boolean; sources: string[]; masked: string | null }>(
+      "/api/settings/hf-token",
+    ),
 };

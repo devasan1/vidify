@@ -128,6 +128,53 @@ def remove(model_id: str) -> None:
     typer.secho("removed", fg=typer.colors.YELLOW)
 
 
+auth_app = typer.Typer(help="Manage credentials (HuggingFace token, ...).")
+app.add_typer(auth_app, name="auth")
+
+
+@auth_app.command("login")
+def auth_login(
+    token: str = typer.Option(
+        None,
+        "--token",
+        "-t",
+        help="HF token. If omitted, reads stdin securely.",
+    ),
+) -> None:
+    """Save a HuggingFace token for seamless model downloads."""
+    from vidify.auth import get_hf_token_status, set_hf_token
+
+    if not token:
+        token = typer.prompt("HuggingFace token", hide_input=True)
+    set_hf_token(token)
+    status = get_hf_token_status()
+    typer.secho(f"saved (masked: {status['masked']})", fg=typer.colors.GREEN)
+
+
+@auth_app.command("status")
+def auth_status() -> None:
+    """Show whether a HuggingFace token is configured."""
+    from vidify.auth import get_hf_token_status
+
+    status = get_hf_token_status()
+    if status["configured"]:
+        typer.secho(
+            f"HF token: configured ({status['masked']}) — sources: {', '.join(status['sources'])}",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        typer.secho("HF token: NOT configured", fg=typer.colors.YELLOW)
+
+
+@auth_app.command("logout")
+def auth_logout() -> None:
+    """Remove the saved HuggingFace token from the Vidify config."""
+    from vidify.auth import set_hf_token
+
+    set_hf_token(None)
+    typer.secho("cleared", fg=typer.colors.YELLOW)
+
+
 def main() -> None:
     app()
 

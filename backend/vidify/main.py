@@ -14,6 +14,7 @@ from vidify import __version__
 from vidify.api.routes_health import router as health_router
 from vidify.api.routes_jobs import router as jobs_router
 from vidify.api.routes_models import router as models_router
+from vidify.api.routes_settings import router as settings_router
 from vidify.api.routes_specs import router as specs_router
 from vidify.config import SETTINGS
 
@@ -38,9 +39,12 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(health_router)
-    app.include_router(specs_router)
+    # routes_models exposes /api/models/installed — must be registered BEFORE
+    # routes_specs' /api/models/{model_id} so FastAPI matches the literal path first.
     app.include_router(models_router)
+    app.include_router(specs_router)
     app.include_router(jobs_router)
+    app.include_router(settings_router)
 
     # Serve produced outputs directly for <video> tags in the UI.
     app.mount("/outputs", StaticFiles(directory=str(SETTINGS.outputs_dir)), name="outputs")

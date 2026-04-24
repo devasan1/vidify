@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Boxes, Clock, Home, Package, Sparkles } from "lucide-react";
+import { Boxes, Clock, Home, Package, Settings as SettingsIcon, Sparkles } from "lucide-react";
 
 function navItemClass({ isActive }: { isActive: boolean }) {
   return [
@@ -35,6 +35,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/jobs" className={navItemClass}>
             <Clock size={16} /> Jobs
+          </NavLink>
+          <NavLink to="/settings" className={navItemClass}>
+            <SettingsIcon size={16} /> Settings
           </NavLink>
         </nav>
         <div className="mt-auto px-2 pt-6 text-xs text-ink-500">

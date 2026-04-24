@@ -19,6 +19,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from vidify.auth import get_hf_token
 from vidify.config import SETTINGS
 from vidify.specs.schema import ModelSpec, WeightSource
 
@@ -157,6 +158,9 @@ def _fetch_one(src: WeightSource, root: Path) -> None:
         kwargs["revision"] = src.revision
     if src.files:
         kwargs["allow_patterns"] = src.files
+    token = get_hf_token()
+    if token:
+        kwargs["token"] = token
     snapshot_download(**kwargs)
 
 
