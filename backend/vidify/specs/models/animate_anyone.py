@@ -25,7 +25,7 @@ SPEC = ModelSpec(
         ParamField(id="cfg", kind=ParamKind.FLOAT, label="Guidance", default=3.5, min=1.0, max=7.5, step=0.1),
         ParamField(id="seed", kind=ParamKind.SEED, label="Seed", default=42),
     ],
-    weights=[WeightSource(repo_id="HumanAIGC/AnimateAnyone", target_subdir="animate-anyone", approx_size_gb=6.0)],
+    weights=[WeightSource(repo_id="patrolli/AnimateAnyone", target_subdir="animate-anyone", approx_size_gb=6.0)],
     vram_gb_min=12.0,
     vram_gb_recommended=24.0,
     runner="vidify.runners.animate_anyone:AnimateAnyoneRunner",

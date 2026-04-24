@@ -20,7 +20,7 @@ SPEC = ModelSpec(
         ParamField(id="upscale", kind=ParamKind.INT, label="Upscale", default=2, min=1, max=4, step=1),
         ParamField(id="bg_upsampler", kind=ParamKind.ENUM, label="Background upsampler", options=["none", "realesrgan"], default="realesrgan"),
     ],
-    weights=[WeightSource(repo_id="TencentARC/GFPGAN", target_subdir="gfpgan", approx_size_gb=0.5)],
+    weights=[WeightSource(repo_id="TencentARC/GFPGANv1", files=["GFPGANv1.pth"], target_subdir="gfpgan", approx_size_gb=0.3)],
     vram_gb_min=4.0,
     vram_gb_recommended=8.0,
     runner="vidify.runners.gfpgan:GFPGANRunner",

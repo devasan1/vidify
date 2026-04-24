@@ -26,7 +26,7 @@ SPEC = ModelSpec(
         ParamField(id="cfg", kind=ParamKind.FLOAT, label="Guidance", default=5.0, min=1.0, max=10.0, step=0.1),
         ParamField(id="seed", kind=ParamKind.SEED, label="Seed", default=42),
     ],
-    weights=[WeightSource(repo_id="Wan-AI/Wan2.2-Animate", target_subdir="wan-animate", approx_size_gb=28.0)],
+    weights=[WeightSource(repo_id="Wan-AI/Wan2.2-Animate-14B", target_subdir="wan-animate", approx_size_gb=28.0)],
     vram_gb_min=16.0,
     vram_gb_recommended=24.0,
     runner="vidify.runners.wan_animate:WanAnimateRunner",

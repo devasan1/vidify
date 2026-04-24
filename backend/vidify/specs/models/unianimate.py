@@ -17,7 +17,7 @@ SPEC = ModelSpec(
         InputField(id="reference_image", kind=InputKind.IMAGE, label="Reference image"),
         InputField(id="pose_video", kind=InputKind.VIDEO, label="Pose / motion video"),
     ],
-    weights=[WeightSource(repo_id="ali-vilab/UniAnimate", target_subdir="unianimate", approx_size_gb=6.0)],
+    weights=[WeightSource(repo_id="Isi99999/UniAnimate_and_Animate-X_Models", target_subdir="unianimate", approx_size_gb=12.0)],
     vram_gb_min=10.0,
     vram_gb_recommended=16.0,
     runner="vidify.runners.unianimate:UniAnimateRunner",
