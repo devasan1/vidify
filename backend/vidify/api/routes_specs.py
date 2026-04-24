@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from vidify.specs import REGISTRY, get_category, get_model, list_categories, list_models
+from vidify.specs import get_category, get_model, list_categories, list_models
 from vidify.specs.schema import CATEGORY_META
 
 router = APIRouter(prefix="/api", tags=["specs"])

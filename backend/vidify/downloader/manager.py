@@ -106,7 +106,6 @@ def download_model(
         return check_installed(spec)
 
     # Lazy import so backend starts even if hf_hub missing
-    from huggingface_hub import snapshot_download
 
     root = _model_root(spec)
     root.mkdir(parents=True, exist_ok=True)
