@@ -28,7 +28,7 @@ SPEC = ModelSpec(
         ParamField(id="cfg", kind=ParamKind.FLOAT, label="Guidance scale", default=6.0, min=1.0, max=10.0, step=0.1),
         ParamField(id="seed", kind=ParamKind.SEED, label="Seed", default=42),
     ],
-    weights=[WeightSource(repo_id="tencent/HunyuanVideo", target_subdir="hunyuanvideo-1.5", approx_size_gb=42.0)],
+    weights=[WeightSource(repo_id="tencent/HunyuanVideo-1.5", target_subdir="hunyuanvideo-1.5", approx_size_gb=42.0)],
     vram_gb_min=24.0,
     vram_gb_recommended=48.0,
     runner="vidify.runners.hunyuanvideo_15:HunyuanVideo15Runner",
