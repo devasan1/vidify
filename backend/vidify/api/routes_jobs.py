@@ -63,6 +63,15 @@ async def submit_job(
     if spec is None:
         raise HTTPException(status_code=404, detail="unknown model")
 
+    # Fail fast for specs without a real runner instead of producing a
+    # cryptic "No module named ..." error deep in the worker thread.
+    from vidify.runners.base import RunnerNotImplementedError, load_runner
+
+    try:
+        load_runner(spec)
+    except RunnerNotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e)) from e
+
     files = files or []
     text_map = json.loads(texts or "{}")
     param_raw = json.loads(params or "{}")

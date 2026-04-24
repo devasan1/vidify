@@ -10,9 +10,11 @@ Thin wrapper over ``huggingface_hub.snapshot_download`` that:
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import logging
 import shutil
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -130,9 +132,18 @@ def download_model(
             if src.files:
                 msg += f"  files={src.files}"
             _log(msg)
+
+            # Smooth intra-source progress: compose inner byte-fraction
+            # with the outer "source N of M" offset.
+            def _sub_cb(inner_frac: float, inner_msg: str, _idx: int = idx) -> None:
+                if progress_cb is None:
+                    return
+                overall = (_idx + max(0.0, min(1.0, inner_frac))) / n
+                progress_cb(overall, inner_msg)
+
             if progress_cb:
                 progress_cb(idx / n, f"Fetching {src.repo_id}…")
-            _fetch_one(src, root)
+            _fetch_one(src, root, progress_cb=_sub_cb, log_cb=log_cb)
             _log(f"[{idx + 1}/{n}] {src.repo_id} done")
         size_gb = _dir_size_gb(root)
         _log(f"Total on disk: {size_gb} GB")
@@ -169,22 +180,92 @@ def download_model(
             handler.detach()
 
 
-def _fetch_one(src: WeightSource, root: Path) -> None:
+def _fetch_one(
+    src: WeightSource,
+    root: Path,
+    progress_cb: Callable[[float, str], None] | None = None,
+    log_cb: Callable[[str], None] | None = None,
+) -> None:
     from huggingface_hub import snapshot_download
+
+    token = get_hf_token()
+    total_bytes = _estimate_total_bytes(src, token)
+    if log_cb and total_bytes:
+        log_cb(f"Expected size: {total_bytes / (1024**3):.2f} GB")
+
+    # Background thread polls the directory size and reports fraction.
+    stop = threading.Event()
+    progress_thread: threading.Thread | None = None
+    if progress_cb is not None and total_bytes > 0:
+        def _poll() -> None:
+            while not stop.is_set():
+                downloaded = _dir_size_bytes(root)
+                frac = min(0.99, downloaded / total_bytes) if total_bytes else 0.0
+                progress_cb(
+                    frac,
+                    f"{downloaded / (1024**3):.2f} / {total_bytes / (1024**3):.2f} GB",
+                )
+                stop.wait(0.5)
+
+        progress_thread = threading.Thread(target=_poll, daemon=True)
+        progress_thread.start()
 
     kwargs: dict[str, Any] = {
         "repo_id": src.repo_id,
         "local_dir": str(root),
-        "local_dir_use_symlinks": False,
     }
     if src.revision:
         kwargs["revision"] = src.revision
     if src.files:
         kwargs["allow_patterns"] = src.files
-    token = get_hf_token()
     if token:
         kwargs["token"] = token
-    snapshot_download(**kwargs)
+    try:
+        snapshot_download(**kwargs)
+    finally:
+        stop.set()
+        if progress_thread:
+            progress_thread.join(timeout=2.0)
+
+    # Final tick so the bar settles at 100% for this source.
+    if progress_cb is not None:
+        progress_cb(1.0, f"{src.repo_id} complete")
+
+
+def _dir_size_bytes(path: Path) -> int:
+    total = 0
+    for p in path.rglob("*"):
+        if p.is_file():
+            try:
+                total += p.stat().st_size
+            except OSError:
+                continue
+    return total
+
+
+def _estimate_total_bytes(src: WeightSource, token: str | None) -> int:
+    """Query HF for file sizes so we can show a smooth progress bar."""
+    try:
+        from huggingface_hub import HfApi
+
+        api = HfApi(token=token)
+        info = api.model_info(
+            src.repo_id,
+            revision=src.revision,
+            files_metadata=True,
+        )
+    except Exception:
+        return 0
+    total = 0
+    for s in info.siblings or []:
+        name = getattr(s, "rfilename", None)
+        size = getattr(s, "size", None) or 0
+        if not name:
+            continue
+        if src.files and not any(fnmatch.fnmatch(name, p) for p in src.files):
+            continue
+        total += size
+    return total
 
 
 def remove_model(spec: ModelSpec) -> None:

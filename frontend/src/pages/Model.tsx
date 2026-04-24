@@ -72,6 +72,7 @@ export default function Model() {
       : !state.files[i.id];
   });
   const needsDownload = install?.status !== "installed" && model.weights.length > 0;
+  const runnerPlanned = model.status === "planned";
 
   async function submit() {
     if (!modelId) return;
@@ -241,6 +242,25 @@ export default function Model() {
         />
       )}
 
+      {runnerPlanned && (
+        <div className="card mb-6 border-blue-500/30 bg-blue-500/5 p-4">
+          <div className="flex items-start gap-3 text-sm">
+            <AlertTriangle size={16} className="mt-0.5 text-blue-300 shrink-0" />
+            <div className="text-ink-300">
+              <div className="font-medium text-blue-300">Runner not implemented yet</div>
+              <p className="mt-1 text-ink-400">
+                Vidify knows the spec for <code>{model.id}</code> — inputs, params, weights, VRAM —
+                but the inference runner isn’t wired up yet (spec <code>status={model.status}</code>).
+                The downloader works; generation currently only runs for the built-in
+                <code className="mx-1">mock-demo</code> model, which produces a sample MP4 via ffmpeg
+                so the end-to-end pipeline is testable on any machine (including CPU-only).
+                Runners will be added one-by-one behind this same UI.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <InputRenderer
         inputs={model.inputs}
         params={model.params}
@@ -262,10 +282,21 @@ export default function Model() {
         </div>
         <button
           className="btn-primary"
-          disabled={missingRequiredInputs.length > 0 || submitting || needsDownload}
+          disabled={
+            missingRequiredInputs.length > 0 ||
+            submitting ||
+            needsDownload ||
+            runnerPlanned
+          }
           onClick={submit}
+          title={runnerPlanned ? "Runner not implemented yet" : undefined}
         >
-          <Play size={16} /> {submitting ? "Submitting…" : "Generate"}
+          <Play size={16} />{" "}
+          {runnerPlanned
+            ? "Runner not implemented"
+            : submitting
+              ? "Submitting…"
+              : "Generate"}
         </button>
       </div>
     </div>
