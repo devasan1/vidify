@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from vidify import __version__
@@ -44,10 +45,28 @@ def create_app() -> FastAPI:
     # Serve produced outputs directly for <video> tags in the UI.
     app.mount("/outputs", StaticFiles(directory=str(SETTINGS.outputs_dir)), name="outputs")
 
-    # Serve the built frontend, if present (production mode).
+    # Serve the built frontend, if present (production mode). The SPA uses
+    # client-side routing, so unknown paths must fall back to index.html.
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if frontend_dist.exists():
-        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.exists():
+            app.mount(
+                "/assets",
+                StaticFiles(directory=str(assets_dir)),
+                name="assets",
+            )
+
+        index_file = frontend_dist / "index.html"
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def spa_fallback(full_path: str) -> FileResponse:
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404)
+            candidate = frontend_dist / full_path
+            if full_path and candidate.is_file():
+                return FileResponse(str(candidate))
+            return FileResponse(str(index_file))
 
     return app
 
