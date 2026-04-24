@@ -1,0 +1,37 @@
+**/.git
+**/.gitignore
+**/.github
+
+# Python
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/venv
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/*.egg-info
+
+# Node
+**/node_modules
+**/dist
+**/.vite
+
+# Vidify runtime state (never baked into images)
+**/.vidify
+**/models
+**/uploads
+**/outputs
+**/jobs
+**/*.log
+
+# OS / editor
+**/.DS_Store
+**/.idea
+**/.vscode
+**/*.swp
+
+# Docs/artifacts not needed at build time
+screenshots/
+**/*.md
+!README.md

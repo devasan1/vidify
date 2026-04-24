@@ -1,0 +1,49 @@
+# Vidify — docker-compose for local use.
+#
+# Usage:
+#     docker compose up          # builds on first run, then starts
+#     docker compose up --build  # force rebuild
+#     docker compose logs -f     # tail logs
+#     docker compose down        # stop (keeps the volume + weights)
+#
+# Set HF_TOKEN in a .env file next to this compose.yml, or export it:
+#     echo 'HF_TOKEN=hf_xxx' > .env
+#
+# GPU: requires the NVIDIA Container Toolkit
+# (https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+# On CPU-only boxes, remove the `deploy.resources.reservations.devices` block
+# below — only `mock-demo` will be able to run but downloads still work.
+
+services:
+  vidify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vidify:latest
+    container_name: vidify
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      VIDIFY_PORT: "7860"
+      VIDIFY_HOST: "0.0.0.0"
+    volumes:
+      # Persist downloaded weights, user uploads, and generated videos.
+      - vidify-data:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7860/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  vidify-data:
+    driver: local
