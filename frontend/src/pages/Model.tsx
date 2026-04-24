@@ -6,11 +6,13 @@ import {
   Cpu,
   Download,
   ExternalLink,
+  FileText,
   HardDrive,
   Play,
   Scroll,
   Tags,
 } from "lucide-react";
+import DownloadLogsModal from "../components/DownloadLogsModal";
 import InputRenderer, { type FormState } from "../components/InputRenderer";
 import { api } from "../lib/api";
 import type { InstallState, ModelSpec } from "../lib/types";
@@ -28,6 +30,7 @@ export default function Model() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
 
   useEffect(() => {
     if (!modelId) return;
@@ -183,30 +186,59 @@ export default function Model() {
                   python scripts/download_models.py {model.id}
                 </code>
               </p>
-              {install?.progress !== undefined && install?.progress !== null && (
+              {install?.download && install.download.status !== "idle" && (
                 <div className="mt-3">
                   <div className="h-2 overflow-hidden rounded bg-ink-800">
                     <div
-                      className="h-full bg-accent transition-all"
-                      style={{ width: `${Math.round((install.progress ?? 0) * 100)}%` }}
+                      className={`h-full transition-all ${
+                        install.download.status === "failed"
+                          ? "bg-red-500"
+                          : "bg-accent"
+                      }`}
+                      style={{
+                        width: `${Math.round(install.download.progress * 100)}%`,
+                      }}
                     />
                   </div>
                   <div className="mt-1 text-xs text-ink-500">
-                    {install.progress_message}
+                    {install.download.error ?? install.download.message}
                   </div>
                 </div>
               )}
             </div>
-            <button
-              className="btn-primary"
-              onClick={startDownload}
-              disabled={downloading}
-            >
-              <Download size={16} />
-              {downloading ? "Downloading…" : "Download weights"}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  startDownload();
+                  setLogsOpen(true);
+                }}
+                disabled={downloading}
+              >
+                <Download size={16} />
+                {downloading ? "Downloading…" : "Download weights"}
+              </button>
+              {install?.download && install.download.status !== "idle" && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => setLogsOpen(true)}
+                  title="View live download logs"
+                >
+                  <FileText size={14} />
+                  View logs
+                </button>
+              )}
+            </div>
           </div>
         </div>
+      )}
+
+      {logsOpen && model && (
+        <DownloadLogsModal
+          modelId={model.id}
+          modelName={model.name}
+          onClose={() => setLogsOpen(false)}
+        />
       )}
 
       <InputRenderer

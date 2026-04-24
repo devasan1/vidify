@@ -50,6 +50,18 @@ export const api = {
   installed: () => get<Record<string, InstallState>>("/api/models/installed"),
   downloadModel: (id: string) => post<{ status: string }>(`/api/models/${id}/download`),
   removeModel: (id: string) => del<{ status: string }>(`/api/models/${id}`),
+  downloadLogs: (id: string, since = 0) =>
+    get<{
+      model_id: string;
+      status: "idle" | "running" | "succeeded" | "failed";
+      progress: number;
+      message: string;
+      error: string | null;
+      started_at: number | null;
+      finished_at: number | null;
+      logs: { at: number; line: string }[];
+      cursor: number;
+    }>(`/api/models/${id}/download/logs?since=${since}`),
   submitJob: (form: FormData) => post<Job>("/api/jobs", form),
   job: (id: string) => get<Job>(`/api/jobs/${id}`),
   jobs: () => get<Job[]>("/api/jobs"),

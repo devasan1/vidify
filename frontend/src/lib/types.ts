@@ -101,6 +101,10 @@ export interface InstallState {
   size_gb?: number | null;
   path?: string | null;
   message?: string | null;
-  progress?: number | null;
-  progress_message?: string | null;
+  download?: {
+    status: "idle" | "running" | "succeeded" | "failed";
+    progress: number;
+    message: string;
+    error: string | null;
+  } | null;
 }

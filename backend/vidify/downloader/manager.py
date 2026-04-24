@@ -101,22 +101,41 @@ def _dir_size_gb(path: Path) -> float:
 def download_model(
     spec: ModelSpec,
     progress_cb: Callable[[float, str], None] | None = None,
+    log_cb: Callable[[str], None] | None = None,
 ) -> ModelInstallState:
-    """Download all weights for a model. Blocking."""
+    """Download all weights for a model. Blocking.
+
+    ``log_cb`` receives human-readable log lines (progress messages, HF
+    info/warnings, and the final error on failure).
+    """
     if not spec.weights:
         return check_installed(spec)
 
-    # Lazy import so backend starts even if hf_hub missing
+    def _log(msg: str) -> None:
+        if log_cb:
+            log_cb(msg)
 
     root = _model_root(spec)
     root.mkdir(parents=True, exist_ok=True)
+    _log(f"Target: {root}")
+    handler = _HFLogCapture(log_cb) if log_cb else None
+    if handler:
+        handler.attach()
     try:
         n = len(spec.weights)
         for idx, src in enumerate(spec.weights):
+            msg = f"[{idx + 1}/{n}] Fetching {src.repo_id}"
+            if src.revision:
+                msg += f"@{src.revision}"
+            if src.files:
+                msg += f"  files={src.files}"
+            _log(msg)
             if progress_cb:
                 progress_cb(idx / n, f"Fetching {src.repo_id}…")
             _fetch_one(src, root)
+            _log(f"[{idx + 1}/{n}] {src.repo_id} done")
         size_gb = _dir_size_gb(root)
+        _log(f"Total on disk: {size_gb} GB")
         _manifest_path(root).write_text(
             json.dumps(
                 {
@@ -137,6 +156,7 @@ def download_model(
         )
     except Exception as e:
         logger.exception("download failed for %s", spec.id)
+        _log(f"ERROR: {type(e).__name__}: {e}")
         return ModelInstallState(
             model_id=spec.id,
             status=DownloadStatus.FAILED,
@@ -144,6 +164,9 @@ def download_model(
             path=root,
             message=str(e),
         )
+    finally:
+        if handler:
+            handler.detach()
 
 
 def _fetch_one(src: WeightSource, root: Path) -> None:
@@ -168,3 +191,30 @@ def remove_model(spec: ModelSpec) -> None:
     root = _model_root(spec)
     if root.exists():
         shutil.rmtree(root)
+
+
+class _HFLogCapture(logging.Handler):
+    """Attach to huggingface_hub loggers and forward records to `log_cb`."""
+
+    _LOGGER_NAMES = ("huggingface_hub", "filelock")
+
+    def __init__(self, log_cb: Callable[[str], None]) -> None:
+        super().__init__(level=logging.INFO)
+        self._log_cb = log_cb
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self._log_cb(msg)
+        except Exception:
+            pass
+
+    def attach(self) -> None:
+        fmt = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        self.setFormatter(fmt)
+        for name in self._LOGGER_NAMES:
+            logging.getLogger(name).addHandler(self)
+
+    def detach(self) -> None:
+        for name in self._LOGGER_NAMES:
+            logging.getLogger(name).removeHandler(self)

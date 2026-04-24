@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Download, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
 import type { InstallState, ModelSpec } from "../lib/types";
+import DownloadLogsModal from "../components/DownloadLogsModal";
 
 export default function Installed() {
   const [models, setModels] = useState<ModelSpec[]>([]);
   const [state, setState] = useState<Record<string, InstallState>>({});
+  const [logsFor, setLogsFor] = useState<ModelSpec | null>(null);
 
   useEffect(() => {
     api.models().then(setModels).catch(() => {});
@@ -29,7 +31,10 @@ export default function Installed() {
           </p>
         </div>
         <div className="text-sm text-ink-400">
-          Installed: <span className="font-semibold text-ink-100">{totalInstalledGb.toFixed(1)} GB</span>
+          Installed:{" "}
+          <span className="font-semibold text-ink-100">
+            {totalInstalledGb.toFixed(1)} GB
+          </span>
         </div>
       </header>
 
@@ -37,32 +42,58 @@ export default function Installed() {
         {models.map((m) => {
           const s = state[m.id];
           const installed = s?.status === "installed";
-          const downloading = s?.progress !== undefined && s?.progress !== null;
+          const dl = s?.download ?? null;
+          const running = dl?.status === "running";
+          const failed = dl?.status === "failed";
+          const pct = Math.round((dl?.progress ?? 0) * 100);
           return (
             <div key={m.id} className="flex items-center justify-between gap-4 p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-ink-100">{m.name}</span>
                   <span className="text-xs text-ink-500">· {m.category}</span>
+                  {failed && (
+                    <span className="chip bg-red-500/20 text-red-300">
+                      <AlertTriangle size={12} /> failed
+                    </span>
+                  )}
                 </div>
                 <div className="mt-0.5 truncate text-xs text-ink-500">
                   {m.id} · {m.license}
                 </div>
-                {downloading && (
+                {(running || failed) && (
                   <div className="mt-2 w-full max-w-md">
                     <div className="h-1.5 overflow-hidden rounded bg-ink-800">
                       <div
-                        className="h-full bg-accent"
-                        style={{ width: `${Math.round((s?.progress ?? 0) * 100)}%` }}
+                        className={`h-full ${
+                          failed ? "bg-red-500" : "bg-accent"
+                        }`}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="mt-0.5 text-xs text-ink-500">{s?.progress_message}</div>
+                    <div className="mt-0.5 text-xs text-ink-500">
+                      {dl?.error ?? dl?.message}
+                    </div>
                   </div>
                 )}
               </div>
               <div className="text-xs text-ink-400">
-                {installed ? `${s?.size_gb?.toFixed(1) ?? "?"} GB` : `~${(m.weights.reduce((a, w) => a + (w.approx_size_gb ?? 0), 0)).toFixed(1)} GB`}
+                {installed
+                  ? `${s?.size_gb?.toFixed(1) ?? "?"} GB`
+                  : `~${m.weights
+                      .reduce((a, w) => a + (w.approx_size_gb ?? 0), 0)
+                      .toFixed(1)} GB`}
               </div>
+              {(running || failed || installed) && dl != null && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => setLogsFor(m)}
+                  title="View download logs"
+                >
+                  <FileText size={16} />
+                  Logs
+                </button>
+              )}
               {installed ? (
                 <button
                   className="btn-ghost"
@@ -74,18 +105,31 @@ export default function Installed() {
               ) : (
                 <button
                   className="btn-primary"
-                  onClick={() => api.downloadModel(m.id)}
-                  disabled={downloading}
+                  onClick={() => {
+                    api.downloadModel(m.id).catch(() => {});
+                    setLogsFor(m);
+                  }}
+                  disabled={running}
                 >
                   <Download size={16} />
-                  {downloading ? "Downloading" : "Download"}
+                  {running ? "Downloading" : failed ? "Retry" : "Download"}
                 </button>
               )}
-              {installed && <CheckCircle2 size={18} className="text-emerald-400" />}
+              {installed && (
+                <CheckCircle2 size={18} className="text-emerald-400" />
+              )}
             </div>
           );
         })}
       </div>
+
+      {logsFor && (
+        <DownloadLogsModal
+          modelId={logsFor.id}
+          modelName={logsFor.name}
+          onClose={() => setLogsFor(null)}
+        />
+      )}
     </div>
   );
 }
