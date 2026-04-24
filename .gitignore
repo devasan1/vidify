@@ -18,12 +18,12 @@ dist/
 .vite/
 frontend/dist/
 
-# Vidify runtime data
+# Vidify runtime data (downloaded weights, user uploads, outputs)
 .vidify/
-models/
-outputs/
-uploads/
-jobs/
+/models/
+/outputs/
+/uploads/
+/jobs/
 *.log
 
 # OS
